@@ -264,7 +264,7 @@ footer{margin-top:52px;padding-top:16px;border-top:1px solid var(--line);color:v
 
 <section aria-labelledby="dir-h">
 <h2 id="dir-h">Everyone in the tree — dossiers</h2>
-<p class="sec-intro">Each dossier is organised the same way: a <strong>facts table</strong> (dates, occupation, places, family, evidence strength), then <strong>what the records say</strong>, then a <strong>historical context</strong> box — the world around that person, clearly marked as general background rather than a record about them — and a <strong>sources &amp; method</strong> note. A card for <strong>every person in the dataset through November 1, 2026</strong>: birth, marriages, death and burial, children, siblings, occupations, residences, and military service where records give them. Use search to find a name, then tap <strong>Show in the tree</strong> on their card to jump straight to them in the chart above — that is the quickest way to reach the earliest generations, such as Philip Peyton (1665) at the top of the Peyton line. In <strong>Direct lineage</strong> view, branch-only people (siblings, cousins, in-laws) are hidden; in <strong>Full tree</strong> view, everyone appears.</p>
+<p class="sec-intro">Each dossier is organised the same way: a <strong>facts table</strong> (dates, occupation, places, family, evidence strength), then <strong>what the records say</strong>, then a <strong>historical context</strong> box — the world around that person, clearly marked as general background rather than a record about them — and a <strong>sources &amp; method</strong> note. A card for <strong>every person in the dataset through November 1, 2026</strong>: birth, marriages, death and burial, children, siblings, occupations, residences, and military service where records give them. Use search to find a name, then tap <strong>Show in the tree</strong> on their card to jump straight to them in the chart above — that is the quickest way to reach the earliest generations, such as Philip Peyton (1665) at the top of the Peyton line. In <strong>Direct lineage</strong> view, branch-only people (siblings, cousins, in-laws) are hidden; in <strong>Full tree</strong> view, everyone appears. The dossiers are ordered <strong>oldest to youngest</strong> by birth — Philip Peyton, the 1665 Virginia immigrant, comes first, and the living generations come last.</p>
 <div class="defs" aria-labelledby="defs-h">
 <h3 id="defs-h">How to read this tree</h3>
 <p class="defs-intro">Every fact in the dossiers below carries one of these labels. They say how well a fact is backed — not whether it is likely or interesting.</p>
@@ -377,6 +377,20 @@ var dirCards=[];
 Object.keys(PEOPLE).forEach(function(id){var p=PEOPLE[id];dirCards.push({id:id,n:p.name,d:p.dates,r:p.rel,c:p.conf,s:p.side,side:p.side,direct:true,f:p.facts,note:p.note||""});});
 EXTRA.forEach(function(e){dirCards.push(e);});
 dirCards.push({n:"Chunxiang “Fiona” Xie, Ryan & Chase Morrison",d:"Living generation",r:"The Palo Alto household",c:"doc",s:"center",direct:true,f:["Fiona (b. ~1982), married to Spencer Morrison; Ryan (b. May 9, 2016) and Chase (b. March 2021) are their sons — the tenth generation on the Payton line traced here. They also appear in the chart above."],note:""});
+/* Dossiers run oldest to youngest. Birth years come from each card's dates
+   where stated; the tables below pin the cards that state no birth year
+   (a death or marriage year only, or "living generation") to the generation
+   they belong to. These are sort keys only — displayed dates are unchanged. */
+var BORN_BY_ID={philip1665:1644,valentinepeyton:1680,phillippeyton:1720,george:1730,ann:1732,lewis:1757,celia:1758,danielpeyton:1760,johnallen:1779,sarahryan:1780,williamthorp:1800,williamw:1805,phoebe:1806,frederick:1812,harriet:1815,johngrayjolly:1825,nancyquinn:1825,elizabethwalker:1825,daniel:1829,johnhb:1834,maryjones:1839,amanda:1845,miltonthorp:1847,tennesseethorp:1860,jamesb:1865,lizzie:1870,lorenzob:1810,bradford:1885,era:1890,howell:1895,chollis:1895.7,lonnie:1921,grace:1922,pam:1951,fiona:1982,spencer:1985,ryan:2016,chase:2021};
+var BORN_BY_NAME=[["John Duncan",1700],["Thomas B. Haynie",1790],["Larkin B. Moore",1825],["Judah Moore",1828],["Albert E. Moore",1840],["John Bachman Jourdan",1842],["James Alexander Buchanan",1845],["Sina",1846],["Patterson Columbus Barnes",1847],["Zachariah Pannell Jourdan",1852],["Julia Elizabeth Jourdan",1855],["William Allen Boyd Howell",1865],["Mabel Julia",1916],["Randall Nottenkamper",1941],["Brad Payton",1948],["Kathee Payton Blickley",1953],["Brad Blickley",1982],["Chunxiang",1982],["Sara Blickley",1984],["Jonathon Shores",1985],["Claire Blickley Shores",1986],["Autumn Blickley",2010],["Brooke Blickley",2011],["Summer Blickley",2012],["Ethan Shores",2015]];
+function bornYear(p){
+ if(p.id&&BORN_BY_ID[p.id]!=null)return BORN_BY_ID[p.id];
+ for(var i=0;i<BORN_BY_NAME.length;i++){if(p.n.indexOf(BORN_BY_NAME[i][0])>=0)return BORN_BY_NAME[i][1];}
+ var m=/(\d{4})/.exec(p.d||"");
+ return m?parseInt(m[1],10):9999;
+}
+dirCards.forEach(function(p,i){p._ord=i;});
+dirCards.sort(function(a,b){var d=bornYear(a)-bornYear(b);return d!==0?d:a._ord-b._ord;});
 var dirEl=document.getElementById("dir-cards");
 window.__sideFilter="all";
 function renderDir(q){
