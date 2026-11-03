@@ -181,7 +181,7 @@ footer{margin-top:52px;padding-top:16px;border-top:1px solid var(--line);color:v
 .detail a:hover,.mini a:hover,.ask-a a:hover,.record a:hover{color:#0b3aa0}
 </style>
 </head>
-<body data-view="direct">
+<body data-view="close">
 <div class="wrap">
 <header>
 <h1>The Payton Family Tree</h1>
@@ -199,10 +199,11 @@ footer{margin-top:52px;padding-top:16px;border-top:1px solid var(--line);color:v
 <span>A record or authoritative source; a compiled tree only; something the family itself reports; a single weak source; two sources that disagree (both shown); a claim carried on a stated basis, with no record against it; or not yet found.</span>
 </div>
 <div class="viewtoggle" role="group" aria-label="Tree views">
-<button type="button" id="view-direct" class="active">Direct lineage</button>
+<button type="button" id="view-close" class="active">Close family</button>
+<button type="button" id="view-direct">Direct lineage</button>
 <button type="button" id="view-full">Full tree</button>
 </div>
-<p class="view-note" id="view-note"><strong>Direct lineage</strong> shows only the direct ancestors — branch cards (siblings, cousins, in-laws) are hidden. Switch to <strong>Full tree</strong> to see everyone documented.</p>
+<p class="view-note" id="view-note"><strong>Close family</strong> shows the direct ancestors plus the close generations — aunts, uncles, cousins, and their families. Older branch lines are hidden; switch to <strong>Full tree</strong> to see everyone documented, or <strong>Direct lineage</strong> for the direct ancestors only.</p>
 </header>
 
 <div class="chart-head">
@@ -522,16 +523,17 @@ window.jumpToPersonInTree=function(id){
 };
 document.getElementById("conflict-list").innerHTML=CONFLICTS.map(function(r){return '<article class="record conflict"><div class="r-who">'+r.w+"</div><p>"+r.b+'</p><div class="r-src">'+r.s+"</div></article>";}).join("");
 /* ============ view toggle ============ */
-var vd=document.getElementById("view-direct"),vf=document.getElementById("view-full"),vn=document.getElementById("view-note");
+var vd=document.getElementById("view-direct"),vf=document.getElementById("view-full"),vc=document.getElementById("view-close"),vn=document.getElementById("view-note");
 function setView(v){
  document.body.setAttribute("data-view",v);
- vd.classList.toggle("active",v==="direct");vf.classList.toggle("active",v==="full");
- vn.innerHTML=v==="direct"?"<strong>Direct lineage</strong> shows only the direct ancestors — branch cards (siblings, cousins, in-laws) are hidden. Switch to <strong>Full tree</strong> to see everyone documented.":"<strong>Full tree</strong> shows everyone in the tree — direct ancestors plus siblings, cousins, and branch families, each labeled with how well they are documented. Switch to <strong>Direct lineage</strong> to see only the direct ancestor lines.";
+ vd.classList.toggle("active",v==="direct");vf.classList.toggle("active",v==="full");vc.classList.toggle("active",v==="close");
+ vn.innerHTML=v==="close"?"<strong>Close family</strong> shows the direct ancestors plus the close generations — aunts, uncles, cousins, and their families. Older branch lines are hidden; switch to <strong>Full tree</strong> to see everyone documented, or <strong>Direct lineage</strong> for the direct ancestors only.":v==="direct"?"<strong>Direct lineage</strong> shows only the direct ancestors — branch cards (siblings, cousins, in-laws) are hidden. Switch to <strong>Full tree</strong> to see everyone documented.":"<strong>Full tree</strong> shows everyone in the tree — direct ancestors plus siblings, cousins, and branch families, each labeled with how well they are documented. Switch to <strong>Direct lineage</strong> to see only the direct ancestor lines.";
  renderDir(searchEl.value.trim().toLowerCase());
  if(window.__chartSetView)window.__chartSetView(v);
 }
 vd.addEventListener("click",function(){setView("direct");});
 vf.addEventListener("click",function(){setView("full");});
+vc.addEventListener("click",function(){setView("close");});
 renderDir("");
 </script>
 <script>
@@ -678,10 +680,36 @@ function visibleInMode(id){
  if(s==="center")return true;
  return s===sideMode;
 }
-var viewMode="direct";
+/* ---- Close family scope (Nov 2026) ----
+   The default scope: the direct ancestors and their spouses, plus the two
+   youngest generations' family groups -- the root's siblings, the parents'
+   siblings, their spouses, and all of their descendants (with spouses).
+   Older branch lines (siblings of grandparents and beyond) stay hidden,
+   as in Direct lineage. Computed from PEOPLE + BRANCH links at load. */
+var CLOSESET=(function(){
+ var par={},sp={},kids={};
+ Object.keys(PEOPLE).forEach(function(id){var p=PEOPLE[id],s=[];if(p.father)s.push(p.father);if(p.mother)s.push(p.mother);par[id]=s;});
+ BRANCH.forEach(function(b){var s=[];if(b.link&&b.link.t==="c"){if(b.link.f)s.push(b.link.f);if(b.link.m)s.push(b.link.m);}par[b.id]=s;});
+ function addSp(a,b){if(!a||!b||a===b)return;(sp[a]=sp[a]||{})[b]=1;(sp[b]=sp[b]||{})[a]=1;}
+ BRANCH.forEach(function(b){if(b.link&&b.link.t==="s")addSp(b.id,b.link.a);});
+ Object.keys(par).forEach(function(id){var seen={},ps=[];par[id].forEach(function(x){if(x&&!seen[x]){seen[x]=1;ps.push(x);}});if(ps.length===2)addSp(ps[0],ps[1]);});
+ Object.keys(par).forEach(function(id){par[id].forEach(function(pp){(kids[pp]=kids[pp]||[]).push(id);});});
+ var vis={},anc={};
+ (function up(x){(par[x]||[]).forEach(function(pp){if(!anc[pp]){anc[pp]=1;up(pp);}});})("spencer");
+ Object.keys(anc).forEach(function(a){vis[a]=1;Object.keys(sp[a]||{}).forEach(function(x){vis[x]=1;});});
+ function sibs(x){var out={};(par[x]||[]).forEach(function(pp){(kids[pp]||[]).forEach(function(k){if(k!==x)out[k]=1;});});return Object.keys(out);}
+ var queue=[];
+ sibs("spencer").forEach(function(x){queue.push(x);});
+ (par.spencer||[]).forEach(function(pp){sibs(pp).forEach(function(x){queue.push(x);});});
+ Object.keys(sp.spencer||{}).forEach(function(x){sibs(x).forEach(function(y){queue.push(y);});});
+ queue.forEach(function(x){vis[x]=1;});
+ while(queue.length){var cur=queue.pop();var add=Object.keys(sp[cur]||{}).concat(kids[cur]||[]);add.forEach(function(x){if(!vis[x]){vis[x]=1;queue.push(x);}});}
+ return vis;
+})();
+var viewMode="close";
 function chartVisible(id){
  if(!visibleInMode(id))return false;
- if(viewMode!=="full"&&BRANCHMAP[id])return false;
+ if(BRANCHMAP[id]&&viewMode!=="full"&&!(viewMode==="close"&&CLOSESET[id]))return false;
  return true;
 }
 function applySide(){
@@ -690,7 +718,7 @@ function applySide(){
   var ch=el.getAttribute("data-child"),par=el.getAttribute("data-parent"),show;
   if(par){show=visibleInMode(ch)&&visibleInMode(par);}
   else{var pp=PEOPLE[ch];show=!!pp&&visibleInMode(ch)&&[pp.father,pp.mother].some(function(x){return x&&pos[x]&&visibleInMode(x);});}
-  if(el.getAttribute("data-branch")&&viewMode!=="full")show=false;
+  if(el.getAttribute("data-branch"))show=chartVisible(ch)&&(!par||chartVisible(par));
   el.style.display=show?"":"none";
  });
 }
@@ -716,7 +744,7 @@ window.__chartFocusPerson=function(id){
  if(!pos[id]||!nodeEls[id])return;
  var p=PEOPLE[id]||BRANCHMAP[id];
  if(p&&p.side&&p.side!=="center"&&sideMode!=="all"&&sideMode!==p.side)setSide(p.side);
- if(BRANCHMAP[id]&&viewMode!=="full"&&window.setView)window.setView("full");
+ if(BRANCHMAP[id]&&viewMode!=="full"&&!chartVisible(id)&&window.setView)window.setView("full");
  if(!chartVisible(id))return;
  select(id,false);
  var vw=viewport.clientWidth||300,vh=viewport.clientHeight||300;
@@ -728,7 +756,7 @@ window.__chartFocusPerson=function(id){
 };
 window.__chartSetView=function(v){
  viewMode=v;
- if(selectedId&&BRANCHMAP[selectedId]&&v!=="full")clearSelection();
+ if(selectedId&&!chartVisible(selectedId))clearSelection();
  applySide();fitVisible();
 };
 function setSide(mode){
